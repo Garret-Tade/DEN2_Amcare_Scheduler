@@ -3,149 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEN2 Amcare Scheduler</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-        }
-        header {
-            background-color: #0078d4;
-            color: white;
-            padding: 1rem;
-            text-align: center;
-        }
-        .tabs {
-            display: flex;
-            justify-content: center;
-            background-color: #0078d4;
-            padding: 0.5rem;
-        }
-        .tab {
-            margin: 0 1rem;
-            padding: 0.5rem 1rem;
-            color: white;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-        }
-        .tab.active {
-            border-bottom: 3px solid #fff;
-            font-weight: bold;
-        }
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            background: white;
-            padding: 2rem;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
-        .container.active {
-            display: block;
-        }
-        .slot-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            list-style-type: none;
-            padding: 0;
-        }
-        .slot-list li {
-            padding: 0.5rem;
-            text-align: center;
-            background-color: #f9f9f9;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: bold;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .slot-list li.full {
-            background-color: #8B0000; /* Dark Red */
-            color: white;
-        }
-        .slot-list li:not(.full) {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        select option.full {
-            background-color: #8B0000;
-        }
-    </style>
-    <script>
-        function switchTab(tabId) {
-            const tabs = document.querySelectorAll('.container');
-            const tabButtons = document.querySelectorAll('.tab');
-
-            tabs.forEach(tab => tab.classList.remove('active'));
-            tabButtons.forEach(button => button.classList.remove('active'));
-
-            document.getElementById(tabId).classList.add('active');
-            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-        }
-
-        function populateTimeDropdown(slots) {
-            const timeDropdown = document.getElementById("time");
-            timeDropdown.innerHTML = ""; // Clear previous options
-
-            slots.forEach((slot) => {
-                const option = document.createElement("option");
-                option.value = slot.time;
-                option.textContent = slot.time;
-                if (slot.associates.length >= 2) {
-                    option.disabled = true;
-                    option.classList.add("full");
-                }
-                timeDropdown.appendChild(option);
-            });
-        }
-
-        async function updateTimeSlots() {
-            const response = await fetch("/get_slots");
-            const slots = await response.json();
-
-            const slotsContainer = document.getElementById("slots-content");
-            slotsContainer.innerHTML = ""; // Clear previous slots
-
-            slots.forEach((slot) => {
-                const listItem = document.createElement("li");
-                listItem.className = slot.associates.length >= 2 ? "full" : "unfilled";
-                listItem.textContent = `${slot.time}`;
-                if (slot.associates.length > 0) {
-                    listItem.textContent += ` - Associates: ${slot.associates.join(", ")}`;
-                }
-                slotsContainer.appendChild(listItem);
-            });
-
-            // Update dropdown options
-            populateTimeDropdown(slots);
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            updateTimeSlots();
-
-            document.querySelector("form").addEventListener("submit", async (event) => {
-                event.preventDefault();
-
-                const formData = new FormData(event.target);
-                const response = await fetch("/submit", {
-                    method: "POST",
-                    body: formData
-                });
-                if (response.ok) {
-                    alert("Appointment booked successfully!");
-                } else {
-                    const error = await response.json();
-                    alert(error.message);
-                }
-
-                updateTimeSlots();
-            });
-        });
-    </script>
+    <title>Scheduling Website</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <header>
@@ -153,31 +12,82 @@
     </header>
 
     <div class="tabs">
-        <div class="tab active" data-tab="scheduler" onclick="switchTab('scheduler')">Scheduler</div>
-        <div class="tab" data-tab="slots" onclick="switchTab('slots')">Time Slots</div>
+        <button onclick="showTab('scheduler')">Scheduler</button>
+        <button onclick="showTab('slots')">View Slots</button>
     </div>
 
-    <div class="container active" id="scheduler">
-        <h2>Schedule a Follow-Up Appointment</h2>
-        <form>
-            <label for="name">Full Name:</label>
-            <input type="text" id="name" name="name" required>
-
-            <label for="alias">Amazon Alias (On Your Badge):</label>
+    <!-- Scheduler Tab -->
+    <div id="scheduler" class="tab-content active">
+        <h2>Book an Appointment</h2>
+        <form id="booking-form">
+            <label for="alias">Amazon Alias:</label>
             <input type="text" id="alias" name="alias" required>
 
-            <label for="time">Preferred Time:</label>
+            <label for="time">Choose a Time:</label>
             <select id="time" name="time" required></select>
 
-            <button type="submit">Submit</button>
+            <button type="submit">Book</button>
         </form>
+        <div id="message"></div>
     </div>
 
-    <div class="container" id="slots">
-        <h2>Time Slots</h2>
-        <ul id="slots-content" class="slot-list">
-            <!-- Time slots will be dynamically generated here -->
-        </ul>
+    <!-- View Slots Tab -->
+    <div id="slots" class="tab-content">
+        <h2>Filled Slots</h2>
+        <ul id="slots-list"></ul>
     </div>
+
+    <script>
+        async function fetchSlots() {
+            const res = await fetch("/get_slots");
+            const slots = await res.json();
+
+            const timeDropdown = document.getElementById("time");
+            const slotsList = document.getElementById("slots-list");
+            timeDropdown.innerHTML = "";
+            slotsList.innerHTML = "";
+
+            slots.forEach(slot => {
+                // Populate dropdown
+                if (slot.associates.length < 2) {
+                    const option = document.createElement("option");
+                    option.value = slot.time;
+                    option.textContent = slot.time;
+                    timeDropdown.appendChild(option);
+                }
+
+                // Populate slots list
+                const li = document.createElement("li");
+                li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
+                slotsList.appendChild(li);
+            });
+        }
+
+        document.getElementById("booking-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const res = await fetch("/submit", { method: "POST", body: formData });
+
+            const message = document.getElementById("message");
+            if (res.ok) {
+                message.textContent = "Appointment booked successfully!";
+            } else {
+                const error = await res.json();
+                message.textContent = error.message;
+            }
+
+            fetchSlots();
+        });
+
+        function showTab(tabId) {
+            document.querySelectorAll(".tab-content").forEach(div => {
+                div.classList.remove("active");
+            });
+            document.getElementById(tabId).classList.add("active");
+        }
+
+        window.onload = fetchSlots;
+    </script>
 </body>
 </html>
