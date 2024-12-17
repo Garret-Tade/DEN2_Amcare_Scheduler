@@ -8,7 +8,7 @@
 </head>
 <body>
     <header>
-        <h1>DEN2 Amcare Scheduler</h1>
+        DEN2 Amcare Scheduler
     </header>
 
     <div class="tabs">
@@ -17,11 +17,11 @@
     </div>
 
     <!-- Scheduler Tab -->
-    <div id="scheduler" class="tab-content active">
+    <section id="scheduler" class="tab-content active">
         <h2>Book an Appointment</h2>
         <form id="booking-form">
             <label for="alias">Amazon Alias:</label>
-            <input type="text" id="alias" name="alias" required>
+            <input type="text" id="alias" name="alias" placeholder="Enter your Amazon Alias" required>
 
             <label for="date">Select a Date:</label>
             <select id="date" name="date" required></select>
@@ -29,17 +29,22 @@
             <label for="time">Choose a Time:</label>
             <select id="time" name="time" required></select>
 
-            <button type="submit">Book</button>
+            <button type="submit">Book Appointment</button>
         </form>
         <div id="message"></div>
-    </div>
+    </section>
 
     <!-- View Slots Tab -->
-    <div id="slots" class="tab-content">
-        <h2>View Slots for <span id="view-date"></span></h2>
+    <section id="slots" class="tab-content">
+        <h2>View Appointments</h2>
+        <label for="view-date-selector">Select Date:</label>
         <select id="view-date-selector"></select>
         <ul id="slots-list"></ul>
-    </div>
+    </section>
+
+    <footer>
+        &copy; 2024 DEN2 Amcare Scheduler | Made with ❤️ for scheduling efficiency.
+    </footer>
 
     <script>
         async function fetchSlots(date) {
@@ -53,7 +58,6 @@
             slotsList.innerHTML = "";
 
             slots.forEach(slot => {
-                // Populate dropdown
                 const option = document.createElement("option");
                 option.value = slot.time;
                 option.textContent = slot.time;
@@ -64,7 +68,6 @@
                 }
                 timeDropdown.appendChild(option);
 
-                // Populate slots list
                 const li = document.createElement("li");
                 li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
                 if (slot.associates.length >= 2) li.classList.add("slot-full");
@@ -72,13 +75,8 @@
             });
         }
 
-        document.getElementById("date").addEventListener("change", () => {
-            fetchSlots(document.getElementById("date").value);
-        });
-
         document.getElementById("booking-form").addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const formData = new FormData(e.target);
             const res = await fetch("/submit", { method: "POST", body: formData });
 
@@ -91,22 +89,14 @@
                 message.textContent = `❌ ${error.message}`;
                 message.style.color = "red";
             }
-
-            // Clear form inputs
             e.target.reset();
-
             fetchSlots(document.getElementById("date").value);
         });
 
         function showTab(tabId) {
             document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
             document.getElementById(tabId).classList.add("active");
-
-            if (tabId === "slots") {
-                const date = document.getElementById("view-date-selector").value;
-                fetchSlots(date);
-                document.getElementById("view-date").textContent = date;
-            }
+            if (tabId === "slots") fetchSlots(document.getElementById("view-date-selector").value);
         }
 
         window.onload = () => {
@@ -115,27 +105,15 @@
             const viewDateDropdown = document.getElementById("view-date-selector");
 
             dates.forEach(date => {
-                const option = document.createElement("option");
-                option.value = date;
-                option.textContent = date;
-                dateDropdown.appendChild(option);
-
-                const viewOption = option.cloneNode(true);
-                viewDateDropdown.appendChild(viewOption);
+                const option = new Option(date, date);
+                dateDropdown.add(option);
+                viewDateDropdown.add(new Option(date, date));
             });
 
             const initialDate = dates[0];
             dateDropdown.value = initialDate;
             viewDateDropdown.value = initialDate;
-
             fetchSlots(initialDate);
-            document.getElementById("view-date").textContent = initialDate;
-
-            viewDateDropdown.addEventListener("change", () => {
-                const selectedDate = viewDateDropdown.value;
-                fetchSlots(selectedDate);
-                document.getElementById("view-date").textContent = selectedDate;
-            });
         };
     </script>
 </body>
