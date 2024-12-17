@@ -23,6 +23,9 @@
             <label for="alias">Amazon Alias:</label>
             <input type="text" id="alias" name="alias" required>
 
+            <label for="date">Select a Date:</label>
+            <select id="date" name="date" required></select>
+
             <label for="time">Choose a Time:</label>
             <select id="time" name="time" required></select>
 
@@ -39,7 +42,8 @@
 
     <script>
         async function fetchSlots() {
-            const res = await fetch("/get_slots");
+            const date = document.getElementById("date").value;
+            const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
 
             const timeDropdown = document.getElementById("time");
@@ -48,49 +52,53 @@
             slotsList.innerHTML = "";
 
             slots.forEach(slot => {
-                // Populate dropdown
-                if (slot.associates.length < 2) {
-                    const option = document.createElement("option");
-                    option.value = slot.time;
-                    option.textContent = slot.time;
-                    timeDropdown.appendChild(option);
-                }
+                const option = document.createElement("option");
+                option.value = slot.time;
+                option.textContent = slot.time;
 
-                // Populate slots list
+                if (slot.associates.length >= 2) {
+                    option.classList.add("filled");
+                    option.disabled = true; // Make slot unclickable
+                }
+                timeDropdown.appendChild(option);
+
                 const li = document.createElement("li");
                 li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
-                if (slot.status === "full") {
-                    li.classList.add("slot-full");
-                }
+                if (slot.associates.length >= 2) li.classList.add("slot-full");
                 slotsList.appendChild(li);
             });
         }
 
+        document.getElementById("date").addEventListener("change", fetchSlots);
+
         document.getElementById("booking-form").addEventListener("submit", async (e) => {
             e.preventDefault();
-
             const formData = new FormData(e.target);
             const res = await fetch("/submit", { method: "POST", body: formData });
 
             const message = document.getElementById("message");
-            if (res.ok) {
-                message.textContent = "Appointment booked successfully!";
-            } else {
-                const error = await res.json();
-                message.textContent = error.message;
-            }
+            if (res.ok) message.textContent = "Appointment booked successfully!";
+            else message.textContent = (await res.json()).message;
 
             fetchSlots();
         });
 
         function showTab(tabId) {
-            document.querySelectorAll(".tab-content").forEach(div => {
-                div.classList.remove("active");
-            });
+            document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
             document.getElementById(tabId).classList.add("active");
         }
 
-        window.onload = fetchSlots;
+        window.onload = () => {
+            const dateDropdown = document.getElementById("date");
+            const dates = {{ dates | safe }};
+            dates.forEach(date => {
+                const option = document.createElement("option");
+                option.value = date;
+                option.textContent = date;
+                dateDropdown.appendChild(option);
+            });
+            fetchSlots();
+        };
     </script>
 </body>
 </html>
