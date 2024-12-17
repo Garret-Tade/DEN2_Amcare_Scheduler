@@ -57,10 +57,25 @@
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
 
+            const timeDropdown = document.getElementById("time");
             const slotsList = document.getElementById("slots-list");
+
+            timeDropdown.innerHTML = "";
             slotsList.innerHTML = "";
 
             slots.forEach(slot => {
+                // Populate dropdown
+                const option = document.createElement("option");
+                option.value = slot.time;
+                option.textContent = slot.time;
+
+                if (slot.associates.length >= 2) {
+                    option.classList.add("filled");
+                    option.disabled = true;
+                }
+                timeDropdown.appendChild(option);
+
+                // Populate slots list
                 const li = document.createElement("li");
                 li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
                 if (slot.associates.length >= 2) li.classList.add("slot-full");
