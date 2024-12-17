@@ -129,9 +129,8 @@
             viewDateDropdown.value = initialDate;
             fetchSlots(initialDate);
 
-            viewDateDropdown.addEventListener("change", () => {
-                fetchSlots(viewDateDropdown.value);
-            });
+            dateDropdown.addEventListener("change", () => fetchSlots(dateDropdown.value));
+            viewDateDropdown.addEventListener("change", () => fetchSlots(viewDateDropdown.value));
         };
     </script>
 </body>
