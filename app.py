@@ -10,13 +10,13 @@ def to_12_hour_format(hour, minute):
     hour = 12 if hour == 0 else hour
     return f"{hour}:{minute:02d} {suffix}"
 
-# Initialize slots for two dates
+# Initialize slots for two dates with 30-minute increments across 24 hours
 dates = [
     datetime.now().strftime('%Y-%m-%d'),
     (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 ]
 time_slots = {
-    date: [{"time": to_12_hour_format(h, m), "associates": []} for h in range(9, 17) for m in (0, 30)]
+    date: [{"time": to_12_hour_format(h, m), "associates": []} for h in range(24) for m in (0, 30)]
     for date in dates
 }
 
@@ -49,6 +49,15 @@ def book_slot():
                 return jsonify({"message": "Time slot is full!"}), 400
 
     return jsonify({"message": "Invalid time slot!"}), 400
+
+@app.route("/get_booked_slots", methods=["GET"])
+def get_booked_slots():
+    date = request.args.get("date")
+    if date not in time_slots:
+        return jsonify({"error": "Invalid date"}), 400
+
+    booked_slots = [slot for slot in time_slots[date] if slot["associates"]]
+    return jsonify(booked_slots)
 
 if __name__ == "__main__":
     app.run(debug=True)
