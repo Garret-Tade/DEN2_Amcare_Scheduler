@@ -12,105 +12,102 @@
     </header>
 
     <main class="container">
-        <!-- Calendar Section -->
-        <div class="calendar-section">
-            <h2>Select a Date</h2>
+        <!-- Tabs -->
+        <div class="tabs">
+            <button onclick="showTab('scheduler')">Book Appointment</button>
+            <button onclick="showTab('slots')">View Slots</button>
+            <button onclick="showTab('booked')">View Booked Appointments</button>
+        </div>
+
+        <!-- Scheduler Tab -->
+        <section id="scheduler" class="tab-content active">
+            <h2>Select a Date and Time</h2>
             <select id="date-picker"></select>
-        </div>
-
-        <!-- Time Slots Section -->
-        <div class="slots-section">
-            <h2>Available Times</h2>
             <div id="slots-grid" class="slots-grid"></div>
-        </div>
+        </section>
 
-        <!-- Booking Confirmation Modal -->
-        <div id="confirmation-modal" class="modal hidden">
-            <div class="modal-content">
-                <h3>Confirm Appointment</h3>
-                <p id="selected-time"></p>
-                <form id="booking-form">
-                    <label for="alias">Your Amazon Alias:</label>
-                    <input type="text" id="alias" name="alias" required>
-                    <button type="submit">Confirm</button>
-                </form>
-                <button onclick="closeModal()">Cancel</button>
-            </div>
-        </div>
+        <!-- View Slots Tab -->
+        <section id="slots" class="tab-content">
+            <h2>Available Time Slots</h2>
+            <select id="slots-date-picker"></select>
+            <ul id="slots-list"></ul>
+        </section>
+
+        <!-- View Booked Appointments Tab -->
+        <section id="booked" class="tab-content">
+            <h2>Booked Appointments</h2>
+            <select id="booked-date-picker"></select>
+            <ul id="booked-slots-list"></ul>
+        </section>
     </main>
 
-    <footer>
-        &copy; 2024 DEN2 Amcare Scheduler
-    </footer>
+    <footer>&copy; 2024 DEN2 Amcare Scheduler</footer>
 
     <script>
-        const datePicker = document.getElementById("date-picker");
-        const slotsGrid = document.getElementById("slots-grid");
-        const modal = document.getElementById("confirmation-modal");
-        const selectedTimeText = document.getElementById("selected-time");
-        const bookingForm = document.getElementById("booking-form");
-        let selectedTime = "";
-
-        // Fetch and render time slots for the selected date
         async function fetchSlots(date) {
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
-            slotsGrid.innerHTML = ""; // Clear previous slots
-
+            const grid = document.getElementById("slots-grid");
+            grid.innerHTML = "";
             slots.forEach(slot => {
                 const button = document.createElement("button");
                 button.textContent = slot.time;
                 button.className = slot.associates.length >= 2 ? "slot full" : "slot available";
+                button.disabled = slot.associates.length >= 2;
 
-                if (slot.associates.length < 2) {
-                    button.onclick = () => openModal(slot.time, date);
+                if (button.classList.contains("available")) {
+                    button.onclick = () => bookSlot(slot.time, date);
                 }
 
-                slotsGrid.appendChild(button);
+                grid.appendChild(button);
             });
         }
 
-        function openModal(time, date) {
-            selectedTime = time;
-            selectedTimeText.textContent = `Date: ${date}, Time: ${time}`;
-            modal.classList.remove("hidden");
+        async function fetchBookedSlots(date) {
+            const res = await fetch(`/get_booked_slots?date=${date}`);
+            const bookedSlots = await res.json();
+            const list = document.getElementById("booked-slots-list");
+            list.innerHTML = "";
+            bookedSlots.forEach(slot => {
+                const li = document.createElement("li");
+                li.textContent = `${slot.time} - Booked by: ${slot.associates.join(", ")}`;
+                list.appendChild(li);
+            });
         }
 
-        function closeModal() {
-            modal.classList.add("hidden");
-        }
+        function bookSlot(time, date) {
+            const alias = prompt("Enter your Amazon Alias:");
+            if (!alias) return;
 
-        // Submit booking
-        bookingForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const alias = document.getElementById("alias").value;
-            const date = datePicker.value;
-
-            const res = await fetch("/book_slot", {
+            fetch("/book_slot", {
                 method: "POST",
-                body: new URLSearchParams({ alias, time: selectedTime, date })
-            });
+                body: new URLSearchParams({ alias, time, date })
+            }).then(res => res.json())
+              .then(data => {
+                  alert(data.message);
+                  fetchSlots(date);
+              });
+        }
 
-            const message = await res.json();
-            alert(message.message);
-            closeModal();
-            fetchSlots(date);
-        });
+        function showTab(tabId) {
+            document.querySelectorAll(".tab-content").forEach(tab => tab.classList.remove("active"));
+            document.getElementById(tabId).classList.add("active");
+            const date = document.getElementById(`${tabId}-date-picker`)?.value;
+            if (tabId === "scheduler") fetchSlots(date);
+            if (tabId === "booked") fetchBookedSlots(date);
+        }
 
         window.onload = () => {
-            fetch('/').then(() => {
-                const dates = {{ dates | safe }};
-                dates.forEach(date => {
-                    const option = new Option(date, date);
-                    datePicker.add(option);
-                });
-                datePicker.value = dates[0];
-                fetchSlots(dates[0]);
+            const dates = {{ dates | safe }};
+            ["date-picker", "slots-date-picker", "booked-date-picker"].forEach(id => {
+                const picker = document.getElementById(id);
+                dates.forEach(date => picker.add(new Option(date, date)));
+                picker.value = dates[0];
             });
 
-            datePicker.addEventListener("change", () => {
-                fetchSlots(datePicker.value);
-            });
+            fetchSlots(dates[0]);
+            document.getElementById("slots-date-picker").addEventListener("change", e => fetchSlots(e.target.value));
+            document.getElementById("booked-date-picker").addEventListener("change", e => fetchBookedSlots(e.target.value));
         };
     </script>
 </body>
