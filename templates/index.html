@@ -37,9 +37,15 @@
     <!-- View Slots Tab -->
     <section id="slots" class="tab-content">
         <h2>View Appointments</h2>
-        <label for="view-date-selector">Select Date:</label>
-        <select id="view-date-selector"></select>
-        <ul id="slots-list"></ul>
+        <div>
+            <label for="view-date-selector">Filter by Date:</label>
+            <select id="view-date-selector"></select>
+        </div>
+
+        <div id="date-slot-grids">
+            <h3 id="grid-date-title"></h3>
+            <ul id="slots-list"></ul>
+        </div>
     </section>
 
     <footer>
@@ -51,32 +57,21 @@
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
 
-            const timeDropdown = document.getElementById("time");
             const slotsList = document.getElementById("slots-list");
-
-            timeDropdown.innerHTML = "";
             slotsList.innerHTML = "";
 
             slots.forEach(slot => {
-                const option = document.createElement("option");
-                option.value = slot.time;
-                option.textContent = slot.time;
-
-                if (slot.associates.length >= 2) {
-                    option.classList.add("filled");
-                    option.disabled = true;
-                }
-                timeDropdown.appendChild(option);
-
                 const li = document.createElement("li");
                 li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
                 if (slot.associates.length >= 2) li.classList.add("slot-full");
                 slotsList.appendChild(li);
             });
+            document.getElementById("grid-date-title").textContent = `Appointments for ${date}`;
         }
 
         document.getElementById("booking-form").addEventListener("submit", async (e) => {
             e.preventDefault();
+
             const formData = new FormData(e.target);
             const res = await fetch("/submit", { method: "POST", body: formData });
 
@@ -96,7 +91,11 @@
         function showTab(tabId) {
             document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
             document.getElementById(tabId).classList.add("active");
-            if (tabId === "slots") fetchSlots(document.getElementById("view-date-selector").value);
+
+            if (tabId === "slots") {
+                const selectedDate = document.getElementById("view-date-selector").value;
+                fetchSlots(selectedDate);
+            }
         }
 
         window.onload = () => {
@@ -107,13 +106,17 @@
             dates.forEach(date => {
                 const option = new Option(date, date);
                 dateDropdown.add(option);
-                viewDateDropdown.add(new Option(date, date));
+                viewDateDropdown.add(option.cloneNode(true));
             });
 
             const initialDate = dates[0];
             dateDropdown.value = initialDate;
             viewDateDropdown.value = initialDate;
             fetchSlots(initialDate);
+
+            viewDateDropdown.addEventListener("change", () => {
+                fetchSlots(viewDateDropdown.value);
+            });
         };
     </script>
 </body>
