@@ -73,16 +73,24 @@ button:hover {
 }
 
 #slots-list li {
-    background: #f4f4f9;
     padding: 0.5rem;
     border: 1px solid #ddd;
     margin: 0.5rem 0;
     border-radius: 4px;
+    background: #f4f4f9;
 }
 
-/* Darker red for filled slots */
+/* Styling for filled slots */
 .slot-full {
-    background-color: #8B0000; /* Dark Red */
-    color: white;
+    background-color: #FF6347; /* Red background */
+    color: black; /* Black text */
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Dropdown styling for filled slots */
+select option.filled {
+    background-color: #FF6347; /* Red background */
+    color: black; /* Black text */
     font-weight: bold;
 }
