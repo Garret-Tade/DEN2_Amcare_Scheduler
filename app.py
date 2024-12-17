@@ -3,9 +3,15 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Initialize time slots with 2 spots per slot for each date
-dates = [(datetime.now()).strftime('%Y-%m-%d'), (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')]
-time_slots = {date: [{"time": f"{h:02d}:{m:02d}", "associates": []} for h in range(24) for m in (0, 30)] for date in dates}
+# Initialize slots for current and tomorrow's date
+dates = [
+    datetime.now().strftime('%Y-%m-%d'),
+    (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+]
+time_slots = {
+    date: [{"time": f"{h:02d}:{m:02d}", "associates": []} for h in range(24) for m in (0, 30)]
+    for date in dates
+}
 
 @app.route("/")
 def home():
