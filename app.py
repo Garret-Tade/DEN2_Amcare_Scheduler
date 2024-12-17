@@ -12,6 +12,9 @@ def home():
 
 @app.route("/get_slots", methods=["GET"])
 def get_slots():
+    # Add a "status" field to indicate if the slot is full
+    for slot in time_slots:
+        slot["status"] = "full" if len(slot["associates"]) >= 2 else "available"
     return jsonify(time_slots)
 
 @app.route("/submit", methods=["POST"])
