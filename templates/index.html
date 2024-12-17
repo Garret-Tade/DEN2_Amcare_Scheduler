@@ -53,6 +53,8 @@
     </footer>
 
     <script>
+        let currentTab = "scheduler"; // Track which tab is active
+
         async function fetchSlots(date) {
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
@@ -103,6 +105,9 @@
         });
 
         function showTab(tabId) {
+            if (tabId === currentTab) return; // Prevent unnecessary reloading
+            currentTab = tabId;
+
             document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
             document.getElementById(tabId).classList.add("active");
 
