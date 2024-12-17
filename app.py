@@ -3,20 +3,20 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# Function to convert 24-hour time to 12-hour format
+# Function to format time as 12-hour AM/PM
 def to_12_hour_format(hour, minute):
     suffix = "AM" if hour < 12 else "PM"
     hour = hour if hour <= 12 else hour - 12
     hour = 12 if hour == 0 else hour
     return f"{hour}:{minute:02d} {suffix}"
 
-# Initialize slots for current and tomorrow's date
+# Initialize slots for two dates
 dates = [
     datetime.now().strftime('%Y-%m-%d'),
     (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 ]
 time_slots = {
-    date: [{"time": to_12_hour_format(h, m), "associates": []} for h in range(24) for m in (0, 30)]
+    date: [{"time": to_12_hour_format(h, m), "associates": []} for h in range(9, 17) for m in (0, 30)]
     for date in dates
 }
 
@@ -31,8 +31,8 @@ def get_slots():
         return jsonify({"error": "Invalid date"}), 400
     return jsonify(time_slots[date])
 
-@app.route("/submit", methods=["POST"])
-def submit():
+@app.route("/book_slot", methods=["POST"])
+def book_slot():
     alias = request.form.get("alias")
     selected_time = request.form.get("time")
     selected_date = request.form.get("date")
@@ -44,7 +44,7 @@ def submit():
         if slot["time"] == selected_time:
             if len(slot["associates"]) < 2:
                 slot["associates"].append(alias)
-                return jsonify({"message": "Appointment booked!"})
+                return jsonify({"message": "Appointment booked successfully!"})
             else:
                 return jsonify({"message": "Time slot is full!"}), 400
 
