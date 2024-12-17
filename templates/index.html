@@ -36,32 +36,35 @@
 
     <!-- View Slots Tab -->
     <div id="slots" class="tab-content">
-        <h2>Filled Slots</h2>
+        <h2>View Slots for <span id="view-date"></span></h2>
+        <select id="view-date-selector"></select>
         <ul id="slots-list"></ul>
     </div>
 
     <script>
-        async function fetchSlots() {
-            const date = document.getElementById("date").value;
+        async function fetchSlots(date) {
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
 
             const timeDropdown = document.getElementById("time");
             const slotsList = document.getElementById("slots-list");
+
             timeDropdown.innerHTML = "";
             slotsList.innerHTML = "";
 
             slots.forEach(slot => {
+                // Populate dropdown
                 const option = document.createElement("option");
                 option.value = slot.time;
                 option.textContent = slot.time;
 
                 if (slot.associates.length >= 2) {
                     option.classList.add("filled");
-                    option.disabled = true; // Make slot unclickable
+                    option.disabled = true;
                 }
                 timeDropdown.appendChild(option);
 
+                // Populate slots list
                 const li = document.createElement("li");
                 li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
                 if (slot.associates.length >= 2) li.classList.add("slot-full");
@@ -69,35 +72,70 @@
             });
         }
 
-        document.getElementById("date").addEventListener("change", fetchSlots);
+        document.getElementById("date").addEventListener("change", () => {
+            fetchSlots(document.getElementById("date").value);
+        });
 
         document.getElementById("booking-form").addEventListener("submit", async (e) => {
             e.preventDefault();
+
             const formData = new FormData(e.target);
             const res = await fetch("/submit", { method: "POST", body: formData });
 
             const message = document.getElementById("message");
-            if (res.ok) message.textContent = "Appointment booked successfully!";
-            else message.textContent = (await res.json()).message;
+            if (res.ok) {
+                message.textContent = "✅ Appointment booked successfully!";
+                message.style.color = "green";
+            } else {
+                const error = await res.json();
+                message.textContent = `❌ ${error.message}`;
+                message.style.color = "red";
+            }
 
-            fetchSlots();
+            // Clear form inputs
+            e.target.reset();
+
+            fetchSlots(document.getElementById("date").value);
         });
 
         function showTab(tabId) {
             document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
             document.getElementById(tabId).classList.add("active");
+
+            if (tabId === "slots") {
+                const date = document.getElementById("view-date-selector").value;
+                fetchSlots(date);
+                document.getElementById("view-date").textContent = date;
+            }
         }
 
         window.onload = () => {
-            const dateDropdown = document.getElementById("date");
             const dates = {{ dates | safe }};
+            const dateDropdown = document.getElementById("date");
+            const viewDateDropdown = document.getElementById("view-date-selector");
+
             dates.forEach(date => {
                 const option = document.createElement("option");
                 option.value = date;
                 option.textContent = date;
                 dateDropdown.appendChild(option);
+
+                const viewOption = option.cloneNode(true);
+                viewDateDropdown.appendChild(viewOption);
             });
-            fetchSlots();
+
+            const initialDate = dates[0];
+            dateDropdown.value = initialDate;
+            viewDateDropdown.value = initialDate;
+
+            fetchSlots(initialDate);
+            document.getElementById("view-date").textContent = initialDate;
+
+            viewDateDropdown.addEventListener("change", () => {
+                const selectedDate = viewDateDropdown.value;
+                fetchSlots(selectedDate);
+                document.getElementById("view-date").textContent = selectedDate;
+            });
         };
     </script>
 </body>
