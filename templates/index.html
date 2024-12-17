@@ -3,138 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scheduling Website</title>
+    <title>Calendly-like Scheduler</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <header>
-        DEN2 Amcare Scheduler
+        <h1>Schedule Your Appointment</h1>
     </header>
 
-    <div class="tabs">
-        <button onclick="showTab('scheduler')">Scheduler</button>
-        <button onclick="showTab('slots')">View Slots</button>
-    </div>
-
-    <!-- Scheduler Tab -->
-    <section id="scheduler" class="tab-content active">
-        <h2>Book an Appointment</h2>
-        <form id="booking-form">
-            <label for="alias">Amazon Alias:</label>
-            <input type="text" id="alias" name="alias" placeholder="Enter your Amazon Alias" required>
-
-            <label for="date">Select a Date:</label>
-            <select id="date" name="date" required></select>
-
-            <label for="time">Choose a Time:</label>
-            <select id="time" name="time" required></select>
-
-            <button type="submit">Book Appointment</button>
-        </form>
-        <div id="message"></div>
-    </section>
-
-    <!-- View Slots Tab -->
-    <section id="slots" class="tab-content">
-        <h2>View Appointments</h2>
-        <div>
-            <label for="view-date-selector">Filter by Date:</label>
-            <select id="view-date-selector"></select>
+    <main class="container">
+        <!-- Calendar Section -->
+        <div class="calendar-section">
+            <h2>Select a Date</h2>
+            <select id="date-picker"></select>
         </div>
 
-        <div id="date-slot-grids">
-            <h3 id="grid-date-title"></h3>
-            <ul id="slots-list"></ul>
+        <!-- Time Slots Section -->
+        <div class="slots-section">
+            <h2>Available Times</h2>
+            <div id="slots-grid" class="slots-grid"></div>
         </div>
-    </section>
+
+        <!-- Booking Confirmation Modal -->
+        <div id="confirmation-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Confirm Appointment</h3>
+                <p id="selected-time"></p>
+                <form id="booking-form">
+                    <label for="alias">Your Amazon Alias:</label>
+                    <input type="text" id="alias" name="alias" required>
+                    <button type="submit">Confirm</button>
+                </form>
+                <button onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </main>
 
     <footer>
-        &copy; 2024 DEN2 Amcare Scheduler | Made with ❤️ for scheduling efficiency.
+        &copy; 2024 DEN2 Amcare Scheduler
     </footer>
 
     <script>
-        let currentTab = "scheduler"; // Track which tab is active
+        const datePicker = document.getElementById("date-picker");
+        const slotsGrid = document.getElementById("slots-grid");
+        const modal = document.getElementById("confirmation-modal");
+        const selectedTimeText = document.getElementById("selected-time");
+        const bookingForm = document.getElementById("booking-form");
+        let selectedTime = "";
 
+        // Fetch and render time slots for the selected date
         async function fetchSlots(date) {
             const res = await fetch(`/get_slots?date=${date}`);
             const slots = await res.json();
-
-            const timeDropdown = document.getElementById("time");
-            const slotsList = document.getElementById("slots-list");
-
-            timeDropdown.innerHTML = "";
-            slotsList.innerHTML = "";
+            slotsGrid.innerHTML = ""; // Clear previous slots
 
             slots.forEach(slot => {
-                // Populate dropdown
-                const option = document.createElement("option");
-                option.value = slot.time;
-                option.textContent = slot.time;
+                const button = document.createElement("button");
+                button.textContent = slot.time;
+                button.className = slot.associates.length >= 2 ? "slot full" : "slot available";
 
-                if (slot.associates.length >= 2) {
-                    option.classList.add("filled");
-                    option.disabled = true;
+                if (slot.associates.length < 2) {
+                    button.onclick = () => openModal(slot.time, date);
                 }
-                timeDropdown.appendChild(option);
 
-                // Populate slots list
-                const li = document.createElement("li");
-                li.textContent = `${slot.time} - ${slot.associates.join(", ") || "Available"}`;
-                if (slot.associates.length >= 2) li.classList.add("slot-full");
-                slotsList.appendChild(li);
+                slotsGrid.appendChild(button);
             });
-            document.getElementById("grid-date-title").textContent = `Appointments for ${date}`;
         }
 
-        document.getElementById("booking-form").addEventListener("submit", async (e) => {
+        function openModal(time, date) {
+            selectedTime = time;
+            selectedTimeText.textContent = `Date: ${date}, Time: ${time}`;
+            modal.classList.remove("hidden");
+        }
+
+        function closeModal() {
+            modal.classList.add("hidden");
+        }
+
+        // Submit booking
+        bookingForm.addEventListener("submit", async (e) => {
             e.preventDefault();
+            const alias = document.getElementById("alias").value;
+            const date = datePicker.value;
 
-            const formData = new FormData(e.target);
-            const res = await fetch("/submit", { method: "POST", body: formData });
+            const res = await fetch("/book_slot", {
+                method: "POST",
+                body: new URLSearchParams({ alias, time: selectedTime, date })
+            });
 
-            const message = document.getElementById("message");
-            if (res.ok) {
-                message.textContent = "✅ Appointment booked successfully!";
-                message.style.color = "green";
-            } else {
-                const error = await res.json();
-                message.textContent = `❌ ${error.message}`;
-                message.style.color = "red";
-            }
-            fetchSlots(document.getElementById("date").value);
+            const message = await res.json();
+            alert(message.message);
+            closeModal();
+            fetchSlots(date);
         });
 
-        function showTab(tabId) {
-            if (tabId === currentTab) return; // Prevent unnecessary reloading
-            currentTab = tabId;
-
-            document.querySelectorAll(".tab-content").forEach(div => div.classList.remove("active"));
-            document.getElementById(tabId).classList.add("active");
-
-            if (tabId === "slots") {
-                const selectedDate = document.getElementById("view-date-selector").value;
-                fetchSlots(selectedDate);
-            }
-        }
-
         window.onload = () => {
-            const dates = {{ dates | safe }};
-            const dateDropdown = document.getElementById("date");
-            const viewDateDropdown = document.getElementById("view-date-selector");
-
-            dates.forEach(date => {
-                const option = new Option(date, date);
-                dateDropdown.add(option);
-                viewDateDropdown.add(option.cloneNode(true));
+            fetch('/').then(() => {
+                const dates = {{ dates | safe }};
+                dates.forEach(date => {
+                    const option = new Option(date, date);
+                    datePicker.add(option);
+                });
+                datePicker.value = dates[0];
+                fetchSlots(dates[0]);
             });
 
-            const initialDate = dates[0];
-            dateDropdown.value = initialDate;
-            viewDateDropdown.value = initialDate;
-            fetchSlots(initialDate);
-
-            dateDropdown.addEventListener("change", () => fetchSlots(dateDropdown.value));
-            viewDateDropdown.addEventListener("change", () => fetchSlots(viewDateDropdown.value));
+            datePicker.addEventListener("change", () => {
+                fetchSlots(datePicker.value);
+            });
         };
     </script>
 </body>
