@@ -3,13 +3,20 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
+# Function to convert 24-hour time to 12-hour format
+def to_12_hour_format(hour, minute):
+    suffix = "AM" if hour < 12 else "PM"
+    hour = hour if hour <= 12 else hour - 12
+    hour = 12 if hour == 0 else hour
+    return f"{hour}:{minute:02d} {suffix}"
+
 # Initialize slots for current and tomorrow's date
 dates = [
     datetime.now().strftime('%Y-%m-%d'),
     (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
 ]
 time_slots = {
-    date: [{"time": f"{h:02d}:{m:02d}", "associates": []} for h in range(24) for m in (0, 30)]
+    date: [{"time": to_12_hour_format(h, m), "associates": []} for h in range(24) for m in (0, 30)]
     for date in dates
 }
 
